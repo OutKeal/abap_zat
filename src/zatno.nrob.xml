@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_NROB" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <ATTRIBUTES>
+    <OBJECT>ZATNO</OBJECT>
+    <DOMLEN>CHAR10</DOMLEN>
+    <PERCENTAGE>10.0</PERCENTAGE>
+    <CHANGED_AT>20230406062637.124759</CHANGED_AT>
+    <CHANGED_BY>WANG.FANG</CHANGED_BY>
+    <UNAME>WANG.FANG</UNAME>
+    <UDATE>2023-04-06</UDATE>
+    <UTIME>12:13:41</UTIME>
+   </ATTRIBUTES>
+   <TEXT>
+    <LANGU>1</LANGU>
+    <OBJECT>ZATNO</OBJECT>
+    <TXT>自动交易单号</TXT>
+    <TXTSHORT>自动交易单号</TXTSHORT>
+    <ENAME>WANG.FANG</ENAME>
+    <EDATE>2023-04-06</EDATE>
+    <ETIME>12:13:39</ETIME>
+   </TEXT>
+  </asx:values>
+ </asx:abap>
+</abapGit>

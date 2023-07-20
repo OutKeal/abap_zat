@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_IDOC" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <IDOC>
+    <ATTRIBUTES>
+     <DESCRP>创建自动单据</DESCRP>
+     <FIRSTTYP>ZATCREATE01</FIRSTTYP>
+     <LASTTYP>ZATCREATE01</LASTTYP>
+     <GENERATED>X</GENERATED>
+    </ATTRIBUTES>
+    <T_SYNTAX>
+     <EDI_IAPI02>
+      <NR>0001</NR>
+      <SEGTYP>Z1ZATS_BAPI_HEAD</SEGTYP>
+      <OCCMIN>0000000001</OCCMIN>
+      <OCCMAX>0000000001</OCCMAX>
+      <HLEVEL>01</HLEVEL>
+     </EDI_IAPI02>
+     <EDI_IAPI02>
+      <NR>0002</NR>
+      <SEGTYP>Z1ZATS_BAPI_ITEM</SEGTYP>
+      <OCCMIN>0000000001</OCCMIN>
+      <OCCMAX>0999999999</OCCMAX>
+      <HLEVEL>02</HLEVEL>
+     </EDI_IAPI02>
+    </T_SYNTAX>
+   </IDOC>
+  </asx:values>
+ </asx:abap>
+</abapGit>

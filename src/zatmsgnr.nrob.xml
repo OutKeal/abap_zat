@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_NROB" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <ATTRIBUTES>
+    <OBJECT>ZATMSGNR</OBJECT>
+    <DOMLEN>CHAR10</DOMLEN>
+    <PERCENTAGE>10.0</PERCENTAGE>
+    <CHANGED_AT>20230406031718.380316</CHANGED_AT>
+    <CHANGED_BY>WANG.FANG</CHANGED_BY>
+    <ENAME>WANG.FANG</ENAME>
+    <EDATE>2023-04-06</EDATE>
+    <ETIME>11:17:18</ETIME>
+   </ATTRIBUTES>
+   <TEXT>
+    <LANGU>1</LANGU>
+    <OBJECT>ZATMSGNR</OBJECT>
+    <TXT>消息日志号</TXT>
+    <TXTSHORT>消息日志号</TXTSHORT>
+    <ENAME>WANG.FANG</ENAME>
+    <EDATE>2023-04-06</EDATE>
+    <ETIME>11:17:18</ETIME>
+   </TEXT>
+  </asx:values>
+ </asx:abap>
+</abapGit>

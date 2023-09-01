@@ -24,23 +24,23 @@ FUNCTION zat_create_idoc_input.
 *----------------------------------------------------------------------*
 
   DATA:
-    z1zats_bapi_head LIKE z1zats_bapi_head,
-    z1zats_bapi_item LIKE z1zats_bapi_item,
+        z1zats_bapi_head LIKE z1zats_bapi_head,
+        z1zats_bapi_item LIKE z1zats_bapi_item,
 
-    e_atno           LIKE
-                zatt_head-atno,
-    e_status         LIKE
-              zatt_head-status,
-    is_head          LIKE
-               zats_bapi_head,
+        e_atno           LIKE
+        zatt_head-atno,
+        e_status         LIKE
+        zatt_head-status,
+        is_head          LIKE
+        zats_bapi_head,
 
-    it_item          LIKE zats_bapi_item
-                         OCCURS 0 WITH HEADER LINE,
-    et_return        LIKE bapiret2
-                       OCCURS 0 WITH HEADER LINE,
+        it_item          LIKE zats_bapi_item
+        OCCURS 0 WITH HEADER LINE,
+        et_return        LIKE bapiret2
+        OCCURS 0 WITH HEADER LINE,
 
-    t_edidd          LIKE edidd OCCURS 0 WITH HEADER LINE,
-    bapi_retn_info   LIKE bapiret2 OCCURS 0 WITH HEADER LINE.
+        t_edidd          LIKE edidd OCCURS 0 WITH HEADER LINE,
+        bapi_retn_info   LIKE bapiret2 OCCURS 0 WITH HEADER LINE.
 
   DATA: error_flag,
         bapi_idoc_status LIKE bdidocstat-status.
@@ -51,7 +51,7 @@ FUNCTION zat_create_idoc_input.
   READ TABLE idoc_contrl INDEX 1.
   IF sy-subrc <> 0.
     EXIT.
-  ELSEIF idoc_contrl-mestyp <> 'ZATCREATE'.
+ELSEIF idoc_contrl-mestyp <> 'ZATCREATE'.
     RAISE wrong_function_called.
   ENDIF.
 
@@ -67,112 +67,112 @@ FUNCTION zat_create_idoc_input.
     CLEAR error_flag.
     REFRESH bapi_retn_info.
     CATCH SYSTEM-EXCEPTIONS conversion_errors = 1.
-      LOOP AT t_edidd INTO idoc_data.
+    LOOP AT t_edidd INTO idoc_data.
 
-        CASE idoc_data-segnam.
+      CASE idoc_data-segnam.
 
-          WHEN 'Z1ZATS_BAPI_HEAD'.
+      WHEN 'Z1ZATS_BAPI_HEAD'.
 
-            z1zats_bapi_head = idoc_data-sdata.
-            MOVE-CORRESPONDING z1zats_bapi_head
-               TO is_head.                                  "#EC ENHOK
+        z1zats_bapi_head = idoc_data-sdata.
+        MOVE-CORRESPONDING z1zats_bapi_head
+        TO is_head.                                  "#EC ENHOK
 
-            IF z1zats_bapi_head-budat
-               IS INITIAL.
-              CLEAR is_head-budat.
-            ENDIF.
+        IF z1zats_bapi_head-budat
+        IS INITIAL.
+          CLEAR is_head-budat.
+        ENDIF.
 
-          WHEN 'Z1ZATS_BAPI_ITEM'.
+      WHEN 'Z1ZATS_BAPI_ITEM'.
 
-            z1zats_bapi_item = idoc_data-sdata.
-            MOVE-CORRESPONDING z1zats_bapi_item
-               TO it_item.                                  "#EC ENHOK
+        z1zats_bapi_item = idoc_data-sdata.
+        MOVE-CORRESPONDING z1zats_bapi_item
+        TO it_item.                                  "#EC ENHOK
 
-            APPEND it_item.
+        APPEND it_item.
 
-        ENDCASE.
+      ENDCASE.
 
-      ENDLOOP.
+    ENDLOOP.
     ENDCATCH.
     IF sy-subrc = 1.
 *     write IDoc status-record as error and continue                   *
       CLEAR bapi_retn_info.
-      bapi_retn_info-type   = 'E'.
-      bapi_retn_info-id     = 'B1'.
-      bapi_retn_info-number = '527'.
+      bapi_retn_info-TYPE   = 'E'.
+      bapi_retn_info-ID     = 'B1'.
+      bapi_retn_info-NUMBER = '527'.
       bapi_retn_info-message_v1 = idoc_data-segnam.
       bapi_idoc_status      = '51'.
       PERFORM zat_create_idoc_status
-              TABLES t_edidd
-                     idoc_status
-                     return_variables
-               USING idoc_contrl
-                     bapi_retn_info
-                     bapi_idoc_status
-                     workflow_result.
+      TABLES t_edidd
+        idoc_status
+        return_variables
+      USING idoc_contrl
+            bapi_retn_info
+            bapi_idoc_status
+            workflow_result.
       CONTINUE.
     ENDIF.
 *   call BAPI-function in this system
     SELECT
-      SINGLE *
-      INTO @DATA(ls_head)
-      FROM zatt_head
-      WHERE docnum = @idoc_contrl-docnum.
+    SINGLE *
+    INTO @DATA(ls_head)
+          FROM zatt_head
+          WHERE docnum = @idoc_contrl-docnum.
     IF sy-subrc NE 0.
 
       is_head-docnum = idoc_contrl-docnum.
       CALL FUNCTION 'ZAT_CREATE'
-        EXPORTING
-          is_head   = is_head
-        IMPORTING
-          e_atno    = e_atno
-          e_status  = e_status
-        TABLES
-          it_item   = it_item
-          et_return = et_return
-        EXCEPTIONS
-          OTHERS    = 1.
+      EXPORTING
+        is_head   = is_head
+      IMPORTING
+        e_atno    = e_atno
+        e_status  = e_status
+      TABLES
+        it_item   = it_item
+        et_return = et_return
+      EXCEPTIONS
+        OTHERS    = 1.
     ELSE.
       e_atno = ls_head-atno.
       CALL FUNCTION 'ZAT_POST'
-        EXPORTING
-          iv_type   = ls_head-type
-          iv_atno   = ls_head-atno
-          iv_budat  = ls_head-budat
-        IMPORTING
-          e_status  = e_status
-        TABLES
-          et_return = et_return.
+      EXPORTING
+        iv_type   = ls_head-TYPE
+        iv_atno   = ls_head-atno
+        iv_budat  = ls_head-budat
+      IMPORTING
+        e_status  = e_status
+      TABLES
+        et_return = et_return.
 
 
     ENDIF.
     IF sy-subrc <> 0.
 *     write IDoc status-record as error                                *
       CLEAR bapi_retn_info.
-      bapi_retn_info-type       = 'E'.
-      bapi_retn_info-id         = sy-msgid.
-      bapi_retn_info-number     = sy-msgno.
+      bapi_retn_info-TYPE       = 'E'.
+      bapi_retn_info-ID         = sy-msgid.
+      bapi_retn_info-NUMBER     = sy-msgno.
       bapi_retn_info-message_v1 = sy-msgv1.
       bapi_retn_info-message_v2 = sy-msgv2.
       bapi_retn_info-message_v3 = sy-msgv3.
       bapi_retn_info-message_v4 = sy-msgv4.
       bapi_idoc_status          = '51'.
       PERFORM zat_create_idoc_status
-              TABLES t_edidd
-                     idoc_status
-                     return_variables
-               USING idoc_contrl
-                     bapi_retn_info
-                     bapi_idoc_status
-                     workflow_result.
+      TABLES t_edidd
+        idoc_status
+        return_variables
+      USING idoc_contrl
+            bapi_retn_info
+            bapi_idoc_status
+            workflow_result.
     ELSE.
       LOOP AT et_return.
         IF NOT et_return IS INITIAL.
           CLEAR bapi_retn_info.
           MOVE-CORRESPONDING et_return
-               TO bapi_retn_info.                           "#EC ENHOK
-          IF et_return-type = 'A' OR
-             et_return-type = 'E'.
+          TO bapi_retn_info.                           "#EC ENHOK
+          IF et_return-TYPE = 'A' OR
+          et_return-TYPE = 'E'.
             error_flag = 'X'.
           ENDIF.
           APPEND bapi_retn_info.
@@ -184,36 +184,36 @@ FUNCTION zat_create_idoc_input.
           bapi_idoc_status = '53'.
         ELSE.
           bapi_idoc_status = '51'.
-          IF bapi_retn_info-type = 'S'.
+          IF bapi_retn_info-TYPE = 'S'.
             CONTINUE.
           ENDIF.
         ENDIF.
         PERFORM zat_create_idoc_status
-                TABLES t_edidd
-                       idoc_status
-                       return_variables
-                 USING idoc_contrl
-                       bapi_retn_info
-                       bapi_idoc_status
-                       workflow_result.
+        TABLES t_edidd
+          idoc_status
+          return_variables
+        USING idoc_contrl
+              bapi_retn_info
+              bapi_idoc_status
+              workflow_result.
       ENDLOOP.
       IF sy-subrc <> 0.
 *      'ET_RETURN'                                                     *
 *       is empty write idoc status-record as successful                *
         CLEAR bapi_retn_info.
-        bapi_retn_info-type       = 'S'.
-        bapi_retn_info-id         = 'B1'.
-        bapi_retn_info-number     = '501'.
+        bapi_retn_info-TYPE       = 'S'.
+        bapi_retn_info-ID         = 'B1'.
+        bapi_retn_info-NUMBER     = '501'.
         bapi_retn_info-message_v1 = 'ZATCREATE'.
         bapi_idoc_status          = '53'.
         PERFORM zat_create_idoc_status
-                TABLES t_edidd
-                       idoc_status
-                       return_variables
-                 USING idoc_contrl
-                       bapi_retn_info
-                       bapi_idoc_status
-                       workflow_result.
+        TABLES t_edidd
+          idoc_status
+          return_variables
+        USING idoc_contrl
+              bapi_retn_info
+              bapi_idoc_status
+              workflow_result.
       ENDIF.
       IF error_flag IS INITIAL.
 *       write linked object keys                                       *
@@ -230,19 +230,19 @@ ENDFUNCTION.
 
 * subroutine writing IDoc status-record                                *
 FORM zat_create_idoc_status
-     TABLES idoc_data    STRUCTURE  edidd
-            idoc_status  STRUCTURE  bdidocstat
-            r_variables  STRUCTURE  bdwfretvar
-      USING idoc_contrl  LIKE  edidc
-            VALUE(retn_info) LIKE   bapiret2
-            status       LIKE  bdidocstat-status
-            wf_result    LIKE  bdwf_param-result.
+TABLES idoc_data    STRUCTURE  edidd
+  idoc_status  STRUCTURE  bdidocstat
+  r_variables  STRUCTURE  bdwfretvar
+USING idoc_contrl  LIKE  edidc
+      VALUE(retn_info) LIKE   bapiret2
+      status       LIKE  bdidocstat-status
+      wf_result    LIKE  bdwf_param-result.
 
   CLEAR idoc_status.
   idoc_status-docnum   = idoc_contrl-docnum.
-  idoc_status-msgty    = retn_info-type.
-  idoc_status-msgid    = retn_info-id.
-  idoc_status-msgno    = retn_info-number.
+  idoc_status-msgty    = retn_info-TYPE.
+  idoc_status-msgid    = retn_info-ID.
+  idoc_status-msgno    = retn_info-NUMBER.
   idoc_status-appl_log = retn_info-log_no.
   idoc_status-msgv1    = retn_info-message_v1.
   idoc_status-msgv2    = retn_info-message_v2.
@@ -251,32 +251,32 @@ FORM zat_create_idoc_status
   idoc_status-repid    = sy-repid.
   idoc_status-status   = status.
 
-  CASE retn_info-parameter.
-    WHEN 'ISHEAD'
-      OR 'IS_HEAD'
-         .
-      LOOP AT idoc_data WHERE
-                        segnam = 'Z1ZATS_BAPI_HEAD'.
-        retn_info-row = retn_info-row - 1.
-        IF retn_info-row <= 0.
-          idoc_status-segnum = idoc_data-segnum.
-          idoc_status-segfld = retn_info-field.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-    WHEN 'ITITEM'
-      OR 'IT_ITEM'
-         .
-      LOOP AT idoc_data WHERE
-                        segnam = 'Z1ZATS_BAPI_ITEM'.
-        retn_info-row = retn_info-row - 1.
-        IF retn_info-row <= 0.
-          idoc_status-segnum = idoc_data-segnum.
-          idoc_status-segfld = retn_info-field.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-    WHEN OTHERS.
+  CASE retn_info-PARAMETER.
+  WHEN 'ISHEAD'
+    OR 'IS_HEAD'
+    .
+    LOOP AT idoc_data WHERE
+    segnam = 'Z1ZATS_BAPI_HEAD'.
+      retn_info-row = retn_info-row - 1.
+      IF retn_info-row <= 0.
+        idoc_status-segnum = idoc_data-segnum.
+        idoc_status-segfld = retn_info-FIELD.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+  WHEN 'ITITEM'
+    OR 'IT_ITEM'
+    .
+    LOOP AT idoc_data WHERE
+    segnam = 'Z1ZATS_BAPI_ITEM'.
+      retn_info-row = retn_info-row - 1.
+      IF retn_info-row <= 0.
+        idoc_status-segnum = idoc_data-segnum.
+        idoc_status-segfld = retn_info-FIELD.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+  WHEN OTHERS.
 
   ENDCASE.
 
@@ -290,7 +290,7 @@ FORM zat_create_idoc_status
     IF sy-subrc <> 0.
       APPEND r_variables.
     ENDIF.
-  ELSEIF idoc_status-status = '53'.
+ELSEIF idoc_status-status = '53'.
     CLEAR wf_result.
     r_variables-wf_param = 'Processed_IDOCs'.
     r_variables-doc_number = idoc_contrl-docnum.

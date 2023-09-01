@@ -24,6 +24,6 @@ START-OF-SELECTION.
     PERFORM frm_get_single_data.
     CALL SCREEN 100.
   ELSE.
-    g_falv_list = zcl_falv=>create( CHANGING ct_table = gt_rule ).
+    g_falv_list = zwft_falv=>create( CHANGING ct_table = gt_rule ).
     g_falv_list->display( ).
   ENDIF.

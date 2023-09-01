@@ -238,6 +238,7 @@ FORM frm_step_go .
   LOOP AT gt_item_step INTO gs_item_step
       WHERE status = 'A' OR status = 'E'.
     PERFORM frm_process_text USING gs_item_step 'DO'.
+    CALL FUNCTION 'MARD_CLEAR_UPDATE_BUFFER' EXPORTING iv_clear_all_flag = 'X'.
     CASE gs_item_step-step_type.
       WHEN 'PO_CRE'.
         PERFORM frm_po_cre.

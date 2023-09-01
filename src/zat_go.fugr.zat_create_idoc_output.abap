@@ -15,7 +15,7 @@ FUNCTION zat_create_idoc_output.
 *"--------------------------------------------------------------------
 *----------------------------------------------------------------------*
 *  this function module is generated                                   *
-*          never change it manually, please!        2023.05.12         *
+*          never change it manually, please!        2023.08.08         *
 *----------------------------------------------------------------------*
 
   DATA: idoc_control  LIKE bdicontrol,

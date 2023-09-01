@@ -30,8 +30,8 @@ DATA:g_splitter_up          TYPE REF TO cl_gui_splitter_container.
 
 DATA: g_tree_left  TYPE REF TO cl_gui_alv_tree,
       g_tree_right TYPE REF TO cl_gui_alv_tree.
-DATA:g_falv_list TYPE REF TO zcl_falv.
-DATA:g_falv TYPE REF TO zcl_falv.
+DATA:g_falv_list TYPE REF TO zwft_falv.
+DATA:g_falv TYPE REF TO zwft_falv.
 DATA g_treev_l TYPE treev_hhdr.
 DATA g_treev_r TYPE treev_hhdr.
 

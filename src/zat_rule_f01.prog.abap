@@ -13,7 +13,7 @@ FORM frm_get_data.
   ENDIF.
 ENDFORM.
 
-FORM frm_double_click  USING c_falv TYPE REF TO zcl_falv
+FORM frm_double_click  USING c_falv TYPE REF TO ZWFT_FALV
       e_row  TYPE lvc_s_row
       e_column TYPE lvc_s_col
       es_row_no TYPE lvc_s_roid.
@@ -417,7 +417,7 @@ ENDFORM.
 
 FORM frm_init_falv.
   IF g_falv IS INITIAL.
-    g_falv = zcl_falv=>create( EXPORTING i_parent = g_splitter->get_container( row = 2 column = 1 )
+    g_falv = zWFT_falv=>create( EXPORTING i_parent = g_splitter->get_container( row = 2 column = 1 )
                                              CHANGING ct_table = gt_detail ).
     g_falv->display( ).
   ELSE.
@@ -666,6 +666,9 @@ FORM frm_get_input USING text CHANGING l_default.
     EXCEPTIONS
       error_in_fields = 1
       OTHERS          = 2.
+  IF SY-SUBRC NE 0.
+    RETURN.
+  ENDIF.
   IF p_gv_ret_code = 'A'.
     MESSAGE '操作已取消' TYPE 'S'.
     RETURN.

@@ -13,40 +13,47 @@ DATA:
 end_data object. " Do not change.. DATA is generated
 
 begin_method display changing container.
-SUBMIT zat_query WITH s_atno = object-key-atno.
+RANGES s_erdat FOR sy-datum.
+APPEND VALUE #( sign = 'I'
+                              option = 'BT'
+                              low = '20000101'
+                              high = '99991231'
+                              ) TO s_erdat.
+SUBMIT zat_query WITH s_atno = object-key-atno
+                              WITH s_erdat IN s_erdat.
 
 end_method.
 
-BEGIN_METHOD ZATCREATE CHANGING CONTAINER.
+begin_method zatcreate changing container.
 DATA:
-      ISHEAD LIKE ZATS_BAPI_HEAD,
+  ishead   LIKE zats_bapi_head,
 *      IVDOCNUM TYPE ZATT_HEAD-DOCNUM,
-      EATNO TYPE ZATT_HEAD-ATNO,
-      ESTATUS TYPE ZATT_HEAD-STATUS,
-      ITITEM LIKE ZATS_BAPI_ITEM OCCURS 0,
-      ETRETURN LIKE BAPIRET2 OCCURS 0.
-  SWC_GET_ELEMENT CONTAINER 'IsHead' ISHEAD.
+  eatno    TYPE zatt_head-atno,
+  estatus  TYPE zatt_head-status,
+  ititem   LIKE zats_bapi_item OCCURS 0,
+  etreturn LIKE bapiret2 OCCURS 0.
+swc_get_element container 'IsHead' ishead.
 *  SWC_GET_ELEMENT CONTAINER 'IvDocnum' IVDOCNUM.
-  SWC_GET_TABLE CONTAINER 'ItItem' ITITEM.
-  SWC_GET_TABLE CONTAINER 'EtReturn' ETRETURN.
-  CALL FUNCTION 'ZAT_CREATE'
-    EXPORTING
-      IS_HEAD = ISHEAD
-*      IV_DOCNUM = IVDOCNUM
-    IMPORTING
-      E_ATNO = EATNO
-      E_STATUS = ESTATUS
-    TABLES
-      IT_ITEM = ITITEM
-      ET_RETURN = ETRETURN
-    EXCEPTIONS
-      OTHERS = 01.
-  CASE SY-SUBRC.
-    WHEN 0.            " OK
-    WHEN OTHERS.       " to be implemented
-  ENDCASE.
-  SWC_SET_ELEMENT CONTAINER 'EAtno' EATNO.
-  SWC_SET_ELEMENT CONTAINER 'EStatus' ESTATUS.
-  SWC_SET_TABLE CONTAINER 'ItItem' ITITEM.
-  SWC_SET_TABLE CONTAINER 'EtReturn' ETRETURN.
-END_METHOD.
+swc_get_table container 'ItItem' ititem.
+swc_get_table container 'EtReturn' etreturn.
+CALL FUNCTION 'ZAT_CREATE'
+  EXPORTING
+    is_head   = ishead
+*   IV_DOCNUM = IVDOCNUM
+  IMPORTING
+    e_atno    = eatno
+    e_status  = estatus
+  TABLES
+    it_item   = ititem
+    et_return = etreturn
+  EXCEPTIONS
+    OTHERS    = 01.
+CASE sy-subrc.
+  WHEN 0.            " OK
+  WHEN OTHERS.       " to be implemented
+ENDCASE.
+swc_set_element container 'EAtno' eatno.
+swc_set_element container 'EStatus' estatus.
+swc_set_table container 'ItItem' ititem.
+swc_set_table container 'EtReturn' etreturn.
+end_method.

@@ -321,7 +321,7 @@ FORM frm_so_cre .
         lt_condx   TYPE STANDARD TABLE OF bapicondx WITH HEADER LINE.
 
   DATA:e_vbeln TYPE vbeln.
-  CALL FUNCTION 'MARD_CLEAR_UPDATE_BUFFER' EXPORTING iv_clear_all_flag = 'X'.
+
   mapping.
 
   PERFORM frm_set_partner TABLES lt_partner
@@ -344,6 +344,10 @@ FORM frm_so_cre .
       sales_schedules_in   = lt_soline[]
       sales_schedules_inx  = lt_solinex[].
 
+  LOOP AT lt_return WHERE ID = 'V1' AND NUMBER = '555'.
+    lt_return-TYPE = 'E'.
+    MODIFY lt_return.
+  ENDLOOP.
   LOOP AT lt_return WHERE type = 'A' OR type = 'E'.
     PERFORM frm_add_msg USING
           lt_return-type

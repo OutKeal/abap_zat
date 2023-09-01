@@ -1,37 +1,46 @@
-class ZAT_OBJECT definition
-  public
-  create public .
+CLASS zat_object DEFINITION
+  PUBLIC
+  CREATE PUBLIC .
 
-public section.
+  PUBLIC SECTION.
 
-  methods CONSTRUCTOR .
-  class-methods CREATE
-    importing
-      value(IS_HEAD) type ZATS_BAPI_HEAD
-      value(IT_ITEM) type ZATTS_BAPI_ITEM
-    exporting
-      value(E_ATNO) type ZATT_HEAD-ATNO
-      value(E_STATUS) type ZATT_HEAD-STATUS
-      value(ET_RETURN) type BAPIRET2_T
-    returning
-      value(RV_AT) type ref to ZAT_OBJECT
-    exceptions
-      ERROR .
-  class-methods POST .
-  methods CLEAR .
+    METHODS constructor .
+    CLASS-METHODS create
+      IMPORTING
+        VALUE(is_head)   TYPE zats_bapi_head
+        VALUE(it_item)   TYPE zatts_bapi_item
+      EXPORTING
+        VALUE(e_atno)    TYPE zatt_head-atno
+        VALUE(e_status)  TYPE zatt_head-status
+        VALUE(et_return) TYPE bapiret2_t
+      RETURNING
+        VALUE(rv_at)     TYPE REF TO zat_object
+      EXCEPTIONS
+        error .
+    CLASS-METHODS post
+      IMPORTING
+        VALUE(i_type)    TYPE zatt_head-type
+        VALUE(i_atno)    TYPE zatt_head-atno
+        VALUE(i_budat)   TYPE zatt_head-budat
+      EXPORTING
+        VALUE(e_status)  TYPE zatt_head-status
+        VALUE(et_return) TYPE bapiret2_t .
+    CLASS-METHODS cancel
+      IMPORTING
+        VALUE(i_atno)    TYPE zatt_head-atno
+        VALUE(i_type)    TYPE zatt_head-type
+        VALUE(i_budat)   TYPE zatt_head-budat
+      EXPORTING
+        VALUE(et_return) TYPE bapiret2_t .
+    METHODS clear .
 protected section.
 
   data GS_HEAD type ZATT_HEAD .
-  data GS_ITEM type ZATT_ITEM .
-  data GS_CONTROL type ZATT_CONTROL .
   data GS_TYPE type ZATT_TYPE .
-  data GS_STEP type ZATT_STEP .
-  data GS_STEP_RULE type ZATT_STEP_RULE .
   data GS_ITEM_STEP type ZATT_ITEM_STEP .
-  data GS_MESSAGE type ZATT_MESSAGE .
-  data GS_RETURN type BAPIRET2 .
-  data G_ERROR type CHAR1 .
-  data G_TYPE type ZATD_TYPE .
+  data G_ERROR type ABAP_BOOL .
+  data G_ATNO type ZATT_HEAD-ATNO .
+  data G_TYPE type ZATT_HEAD-TYPE .
   data G_MSGNR type CHAR10 .
   data G_TIMES type INT1 .
   data G_MBLNR type MBLNR .
@@ -46,7 +55,6 @@ protected section.
   data:
     gt_step_rule TYPE TABLE OF zatt_step_rule .
   data:
-*  gt_head      TYPE TABLE OF zatt_head,
     gt_item      TYPE TABLE OF zatt_item .
   data:
     gt_item_step TYPE TABLE OF zatt_item_step .
@@ -70,12 +78,13 @@ protected section.
       value(IS_ITEM_STEP) type ZATT_ITEM_STEP .
 private section.
 
+  methods CLEAR_BUFFER .
+  methods GET_DATA .
   methods GET_CONFIG .
   methods CHECK_EXORD .
   methods CHECK_HEAD_DATA .
   methods CHECK_ITEM_DATA .
   methods INIT .
-  methods INIT_DATA .
   methods INIT_HEAD .
   methods INIT_INIT_ITEM_STEP .
   methods INIT_ITEM .
@@ -92,7 +101,16 @@ private section.
       !IS_ITEM_STEP type ZATT_ITEM_STEP .
   methods SAVE_DATA .
   methods GO_STEP .
+  methods CANCEL_STEP .
   methods GO_SINGLE .
+  methods CANCEL_SINGLE .
+  methods PROGRESSBAR_SHOW
+    importing
+      !I_CURRENT type I
+      !I_TOTAL type I
+      !I_MSG type STRING optional .
+  methods LOCK .
+  methods UNLOCK .
 ENDCLASS.
 
 
@@ -100,10 +118,10 @@ ENDCLASS.
 CLASS ZAT_OBJECT IMPLEMENTATION.
 
 
-  METHOD ADD_MSG.
-    IF msgty = 'E' OR msgty =  'A'.
-      g_error = 'X'.
-    ENDIF.
+  METHOD add_msg.
+
+    g_error = COND abap_bool( WHEN msgty = 'E' OR msgty =  'A' THEN abap_true ELSE abap_false ).
+
     MESSAGE ID msgid
     TYPE msgty
     NUMBER msgno
@@ -140,43 +158,43 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method BINARY_RELATION.
-  DATA:ls_borident1 TYPE borident.
-  DATA:ls_borident2 TYPE borident.
-  CHECK is_item_step-docnr IS NOT INITIAL.
+  METHOD binary_relation.
+    DATA:ls_borident1 TYPE borident.
+    DATA:ls_borident2 TYPE borident.
+    CHECK is_item_step-docnr IS NOT INITIAL.
 
-  ls_borident1-objtype = 'ZAT'.
-  ls_borident1-objkey = gs_head-atno.
+    ls_borident1-objtype = 'ZAT'.
+    ls_borident1-objkey = gs_head-atno.
 
-  CASE is_item_step-step_type.
-  WHEN 'MB' OR 'VL_GI'.
-    ls_borident2 = VALUE #( objkey = is_item_step-docnr && is_item_step-cjahr
-    objtype = 'BUS2017' ).
-  WHEN 'PO_CRE'.
-    ls_borident2 = VALUE #( objkey = is_item_step-docnr
-    objtype = 'BUS2012' ).
-  WHEN 'SO_CRE'.
-    ls_borident2 = VALUE #( objkey = is_item_step-docnr
-    objtype = 'VBAK' ).
-  WHEN 'STO_VL_CRE' OR 'SO_VL_CRE'.
-    ls_borident2 = VALUE #( objkey = is_item_step-docnr
-    objtype = 'LIKP' ).
-  ENDCASE.
+    CASE is_item_step-step_type.
+      WHEN 'MB' OR 'VL_GI'.
+        ls_borident2 = VALUE #( objkey = is_item_step-docnr && is_item_step-cjahr
+        objtype = 'BUS2017' ).
+      WHEN 'PO_CRE'.
+        ls_borident2 = VALUE #( objkey = is_item_step-docnr
+        objtype = 'BUS2012' ).
+      WHEN 'SO_CRE'.
+        ls_borident2 = VALUE #( objkey = is_item_step-docnr
+        objtype = 'VBAK' ).
+      WHEN 'STO_VL_CRE' OR 'SO_VL_CRE'.
+        ls_borident2 = VALUE #( objkey = is_item_step-docnr
+        objtype = 'LIKP' ).
+    ENDCASE.
 
-  CALL FUNCTION 'BINARY_RELATION_CREATE'
-  EXPORTING
-    obj_rolea      = ls_borident1
-    obj_roleb      = ls_borident2
-    relationtype   = 'VORL'
-  EXCEPTIONS
-    no_model       = 1
-    internal_error = 2
-    unknown        = 3
-    OTHERS         = 4.
-  endmethod.
+    CALL FUNCTION 'BINARY_RELATION_CREATE'
+      EXPORTING
+        obj_rolea      = ls_borident1
+        obj_roleb      = ls_borident2
+        relationtype   = 'VORL'
+      EXCEPTIONS
+        no_model       = 1
+        internal_error = 2
+        unknown        = 3
+        OTHERS         = 4.
+  ENDMETHOD.
 
 
-  METHOD CHECK_EXORD.
+  METHOD check_exord.
     CHECK gs_head-exord IS NOT INITIAL.
 
     SELECT SINGLE atno FROM zatt_head
@@ -186,28 +204,28 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
     INTO @DATA(l_atno).
 
     IF sy-subrc EQ 0.
-      DATA(L_TEXT) = |外部单号{ gs_head-exord }已重复，请检查输入。单号为{ l_atno }|.
-      add_msg( EXPORTING msgty = 'E'  MSGID = 'ZAT' MSGNO = '000' MSGV1 = 'L_TEXT' ).
-      return.
+      DATA(l_text) = |外部单号{ gs_head-exord }已重复，请检查输入。单号为{ l_atno }|.
+      add_msg( EXPORTING msgty = 'E'  msgid = 'ZAT' msgno = '000' msgv1 = 'L_TEXT' ).
+      RETURN.
     ENDIF.
   ENDMETHOD.
 
 
-  METHOD CHECK_HEAD_DATA.
+  METHOD check_head_data.
 
     DATA rule TYPE TABLE OF zats_check_rule .
     DATA ret TYPE TABLE OF bapiret2 .
     CLEAR rule[].
     CLEAR ret[].
 
-    rule[] = VALUE #( FOR ls_control IN gt_control
-    WHERE ( type = g_type AND fieldalv = 'HEAD' )
-    ( fieldname = ls_control-fieldname
-    rollname = ls_control-rollname
-    notnull = ls_control-requi
-    ddtext = ls_control-coltext ) ).
-    DELETE rule WHERE rollname IS INITIAL AND notnull IS INITIAL.
+    rule = VALUE #( FOR ls_control IN gt_control
+                              WHERE ( type = g_type AND fieldalv = 'HEAD' )
+                              ( fieldname = ls_control-fieldname
+                              rollname = ls_control-rollname
+                              notnull = ls_control-requi
+                              ddtext = ls_control-coltext ) ).
 
+    DELETE rule WHERE rollname IS INITIAL AND notnull IS INITIAL.
 
     CALL FUNCTION 'ZAT_CHECK_VALUE'
       EXPORTING
@@ -217,28 +235,29 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
         ret  = ret.
 
     LOOP AT ret INTO DATA(l_ret).
-      add_msg( EXPORTING msgty = l_ret-type msgid = l_ret-id msgno = l_ret-number
-     msgv1 = l_ret-message_v1
-     msgv2 = l_ret-message_v2
-     msgv3 = l_ret-message_v3
-     msgv4 = l_ret-message_v4 ).
-
+      add_msg( msgty = l_ret-type
+         msgid = l_ret-id
+         msgno = l_ret-number
+         msgv1 = l_ret-message_v1
+         msgv2 = l_ret-message_v2
+         msgv3 = l_ret-message_v3
+         msgv4 = l_ret-message_v4 ).
     ENDLOOP.
   ENDMETHOD.
 
 
-  METHOD CHECK_ITEM_DATA.
+  METHOD check_item_data.
     DATA rule TYPE TABLE OF zats_check_rule .
     DATA ret TYPE TABLE OF bapiret2 .
     CLEAR rule[].
     CLEAR ret[].
 
-    LOOP AT gt_control INTO gs_control WHERE type = g_type AND fieldalv = 'HEAD'.
-      IF gs_control-rollname IS NOT INITIAL OR gs_control-requi IS NOT INITIAL.
-        APPEND VALUE #( fieldname = gs_control-fieldname
-        rollname = gs_control-rollname
-        notnull = gs_control-requi
-        ddtext = gs_control-coltext
+    LOOP AT gt_control INTO DATA(ls_control) WHERE type = g_type AND fieldalv = 'HEAD'.
+      IF ls_control-rollname IS NOT INITIAL OR ls_control-requi IS NOT INITIAL.
+        APPEND VALUE #( fieldname = ls_control-fieldname
+        rollname = ls_control-rollname
+        notnull = ls_control-requi
+        ddtext = ls_control-coltext
         ) TO rule.
       ENDIF.
     ENDLOOP.
@@ -249,19 +268,19 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
         rule = rule
         ret  = ret.
 
-  LOOP AT ret INTO DATA(l_ret).
-    add_msg( EXPORTING msgty = l_ret-TYPE msgid = l_ret-ID msgno = l_ret-NUMBER
-      msgv1 = l_ret-message_v1
-      msgv2 = l_ret-message_v2
-      msgv3 = l_ret-message_v3
-      msgv4 = l_ret-message_v4 ).
+    LOOP AT ret INTO DATA(l_ret).
+      add_msg( EXPORTING msgty = l_ret-type msgid = l_ret-id msgno = l_ret-number
+        msgv1 = l_ret-message_v1
+        msgv2 = l_ret-message_v2
+        msgv3 = l_ret-message_v3
+        msgv4 = l_ret-message_v4 ).
 
-  ENDLOOP.
+    ENDLOOP.
 
   ENDMETHOD.
 
 
-  METHOD CLEAR.
+  METHOD clear.
     CLEAR: gt_item ,
     gt_control,
     gt_type ,
@@ -272,16 +291,11 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
     gt_return.
 
     CLEAR: gs_head,
-    gs_item ,
-    gs_control,
     gs_type ,
-    gs_step,
-    gs_step_rule,
-    gs_item_step,
-    gs_message,
-    gs_return.
+    gs_item_step.
 
     CLEAR :g_budat,
+    g_atno,
     g_type,
     g_error,
     g_msgnr,
@@ -291,73 +305,61 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD CONSTRUCTOR.
-    CLEAR( ).
+  METHOD constructor.
+    clear( ).
 
+    DEFINE return_error.
+      IF rv_at->g_error = 'X'.
+        et_return = rv_at->gt_return.
+        FREE rv_at.
+        RETURN.
+      ENDIF.
+    END-OF-DEFINITION.
   ENDMETHOD.
 
 
-  METHOD CREATE.
-    CREATE OBJECT rv_at.
+  METHOD create.
 
-    rv_at->g_type = is_head-type.
+    CREATE OBJECT rv_at."实例化对象
+
+    rv_at->g_type = is_head-type."全局参数赋值
     rv_at->g_budat = is_head-budat.
     MOVE-CORRESPONDING is_head TO rv_at->gs_head.
-    MOVE-CORRESPONDING it_item[] TO rv_at->gt_item[].
+    MOVE-CORRESPONDING it_item TO rv_at->gt_item.
 
-    rv_at->get_config( ).
-    IF rv_at->g_error = 'X'.
-      et_return[] = rv_at->gt_return[].
-      FREE rv_at.
-      RETURN.
-    ENDIF.
+    rv_at->get_config( )."读取配置
+    return_error.
 
-    rv_at->check_exord( ).
-    IF rv_at->g_error = 'X'.
-      et_return[] = rv_at->gt_return[].
-      FREE rv_at.
-      RETURN.
-    ENDIF.
+    rv_at->check_exord( )."校验单号类型+唯一性
+    return_error.
 
-    rv_at->check_head_data( ).
-    IF rv_at->g_error = 'X'.
-      et_return[] = rv_at->gt_return[].
-      FREE rv_at.
-      RETURN.
-    ENDIF.
+    rv_at->check_head_data( )."校验抬头信息
+    return_error.
 
-    rv_at->check_item_data( ).
-    IF rv_at->g_error = 'X'.
-      et_return[] = rv_at->gt_return[].
-      FREE rv_at.
-      RETURN.
-    ENDIF.
+    rv_at->check_item_data( )."校验项目数据
+    return_error.
 
-    rv_at->gs_head-atno = rv_at->get_next_atno( ).
-    IF rv_at->g_error = 'X'.
-      et_return[] = rv_at->gt_return[].
-      FREE rv_at.
-      RETURN.
-    ENDIF.
+    rv_at->g_atno = rv_at->get_next_atno( )."获取对象单号
+    return_error.
 
-    rv_at->init( ).
-    rv_at->save_data( ).
+    rv_at->init( )."初始化单据
+    rv_at->save_data( )."保存单据
 
     IF rv_at->gs_type-immed = 'X'.
       CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
         EXPORTING
           wait = 'X'.
-      rv_at->go_step( ).
+      rv_at->go_step( )."过账
     ENDIF.
-    et_return[] = rv_at->gt_return[].
+
+    et_return = rv_at->gt_return.
     e_atno = rv_at->gs_head-atno.
     e_status = rv_at->gs_head-status.
 
   ENDMETHOD.
 
 
-  METHOD GET_CONFIG.
-
+  METHOD get_config.
 
     SELECT SINGLE * FROM zatt_type
     WHERE type = @g_type
@@ -393,7 +395,7 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD GET_NEXT_ATNO.
+  METHOD get_next_atno.
     CALL FUNCTION 'NUMBER_GET_NEXT'
       EXPORTING
         nr_range_nr             = '01'
@@ -424,6 +426,8 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
 
     lt_step_rule[] = VALUE #( FOR wa IN gt_step_rule
     WHERE ( type = ls_step-type AND step = ls_step-step ) ( wa ) ).
+
+    clear_buffer( ).
 
     zat_go=>go( step = gs_item_step
     head = gs_head
@@ -474,24 +478,24 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
 
   METHOD go_step.
     CLEAR g_times.
-    IF gs_head-status = 'A' OR gs_head-status = 'E' .
-    ELSE.
+    IF NOT ( gs_head-status = 'A' OR gs_head-status = 'E' ).
       add_msg( EXPORTING msgty = 'E' msgid = 'ZAT' msgno = '000' msgv1 = '无法执行' ).
       RETURN.
     ENDIF.
 
     SORT gt_item_step BY step.
     SELECT SINGLE MAX( times ) FROM zatt_message
-    WHERE atno = @gs_head-atno
-    GROUP BY atno
-    INTO @g_times.
+                WHERE atno = @gs_head-atno
+                GROUP BY atno
+                INTO @g_times.
 
     ADD 1 TO g_times.
 
     add_msg( EXPORTING msgty = 'S' msgid = 'ZAT' msgno = '000' msgv1 = |--自动交易{ gs_head-atno }正在执行--| ).
 
     LOOP AT gt_item_step INTO gs_item_step
-    WHERE status = 'A' OR status = 'E'.
+       WHERE status = 'A' OR status = 'E'.
+      progressbar_show( i_current = sy-tabix i_total = lines( gt_item_step ) ).
       CASE gs_item_step-step_type.
         WHEN 'BAPI'.
           go_single( ).
@@ -511,31 +515,28 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD INIT.
-    init_head( ).
-    init_item( ).
-    init_item_text( ).
-    init_init_item_step( ).
-    move_head_to_item( ).
+  METHOD init.
+    init_head( )."初始化抬头
+    init_item( )."初始化项目
+    init_item_text( )."初始化文本
+    init_init_item_step( )."初始化单据的步骤处理过程
+    move_head_to_item( )."将抬头必填赋值到项目对应字段
   ENDMETHOD.
 
 
-  method INIT_DATA.
-  endmethod.
-
-
-  METHOD INIT_HEAD.
+  METHOD init_head.
     MOVE-CORRESPONDING gs_type TO gs_head.
-    LOOP AT gt_control INTO gs_control WHERE type = g_type AND fieldalv = 'HEAD' AND zdefault <> ''.
-      ASSIGN COMPONENT gs_control-fieldname OF STRUCTURE gs_head TO FIELD-SYMBOL(<fs_value>).
+    LOOP AT gt_control INTO DATA(ls_control) WHERE type = g_type AND fieldalv = 'HEAD' AND zdefault <> ''.
+      ASSIGN COMPONENT ls_control-fieldname OF STRUCTURE gs_head TO FIELD-SYMBOL(<fs_value>).
       IF sy-subrc EQ 0.
         IF <fs_value> IS INITIAL.
-          <fs_value> = gs_control-zdefault.
+          <fs_value> = ls_control-zdefault.
         ENDIF.
       ENDIF.
     ENDLOOP.
 
     gs_head = VALUE #( BASE gs_head
+    atno = g_atno
     budat = g_budat
     status = 'A'
     erdat = sy-datum
@@ -545,12 +546,12 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD INIT_INIT_ITEM_STEP.
-    LOOP AT gt_step INTO gs_step.
-      MOVE-CORRESPONDING gs_step TO gs_item_step.
+  METHOD init_init_item_step.
+    LOOP AT gt_step INTO DATA(ls_step).
+      MOVE-CORRESPONDING ls_step TO gs_item_step.
       gs_item_step = VALUE #( BASE gs_item_step
       status = 'A'
-      atno = gs_head-atno ).
+      atno = g_atno ).
 
       APPEND gs_item_step TO gt_item_step.
       CLEAR gs_item_step.
@@ -558,20 +559,18 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD INIT_ITEM.
+  METHOD init_item.
     DATA:l_atnr TYPE mb_line_id.
-
-    LOOP AT gt_control INTO gs_control WHERE type = g_type AND fieldalv = 'ITEM' AND zdefault <> ''.
+    LOOP AT gt_control INTO DATA(ls_control) WHERE type = g_type AND fieldalv = 'ITEM' AND zdefault <> ''.
       LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<fs_item>).
-        ASSIGN COMPONENT gs_control-fieldname OF STRUCTURE <fs_item> TO FIELD-SYMBOL(<fs_value>).
+        ASSIGN COMPONENT ls_control-fieldname OF STRUCTURE <fs_item> TO FIELD-SYMBOL(<fs_value>).
         IF sy-subrc EQ 0.
           IF <fs_value> IS INITIAL.
-            <fs_value> = gs_control-zdefault.
+            <fs_value> = ls_control-zdefault.
           ENDIF.
         ENDIF.
       ENDLOOP.
     ENDLOOP.
-
     CLEAR l_atnr.
     CLEAR gs_head-menge.
     CLEAR gs_head-amount.
@@ -586,35 +585,33 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
           <fs_item>-price = <fs_item>-amount / <fs_item>-menge.
         ENDIF.
       ENDIF.
-      <fs_item>-atno = gs_head-atno.
+
+      <fs_item>-atno = g_atno.
       ADD c_nr TO l_atnr.
       <fs_item>-atnr = l_atnr.
+
       ADD <fs_item>-menge TO gs_head-menge.
       ADD <fs_item>-amount TO gs_head-amount.
     ENDLOOP.
   ENDMETHOD.
 
 
-  METHOD INIT_ITEM_TEXT.
+  METHOD init_item_text.
 
     SELECT a~matnr,a~meins,t~maktx
-    FROM mara AS a LEFT JOIN makt AS t
-    ON a~matnr = t~matnr
-    AND t~spras = @sy-langu
-    INNER JOIN @gt_item AS b ON a~matnr = b~matnr
-    INTO TABLE @DATA(lt_mara).
+          FROM mara AS a LEFT JOIN makt AS t
+          ON a~matnr = t~matnr
+          AND t~spras = @sy-langu
+          INNER JOIN @gt_item AS b ON a~matnr = b~matnr
+          INTO TABLE @DATA(lt_mara).
 
     SORT lt_mara BY matnr.
 
     LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<fs_item>).
       READ TABLE lt_mara INTO DATA(ls_mara) WITH KEY matnr = <fs_item>-matnr BINARY SEARCH.
       IF sy-subrc EQ 0.
-        IF <fs_item>-meins = ''.
-          <fs_item>-meins = ls_mara-meins.
-        ENDIF.
-        IF <fs_item>-maktx = ''.
-          <fs_item>-maktx = ls_mara-maktx.
-        ENDIF.
+        <fs_item>-meins = COND meins( WHEN <fs_item>-meins IS INITIAL THEN ls_mara-meins ).
+        <fs_item>-maktx = COND maktx( WHEN <fs_item>-maktx IS INITIAL THEN ls_mara-maktx ).
       ELSE.
         add_msg( EXPORTING msgty = 'E' msgid = 'ZAT' msgno = '000' msgv1 = |物料号{ <fs_item>-matnr }不存在| ).
       ENDIF.
@@ -622,86 +619,323 @@ CLASS ZAT_OBJECT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD MOVE_HEAD_TO_ITEM.
+  METHOD move_head_to_item.
+    LOOP AT gt_control INTO DATA(ls_control) WHERE type = g_type AND fieldalv = 'HEAD'.
+      CHECK ls_control-fieldname+0(6) <> 'AMOUNT'.
+      CHECK ls_control-fieldname+0(5) <> 'MENGE'.
 
-    LOOP AT gt_control INTO gs_control WHERE type = g_type AND fieldalv = 'HEAD'.
-
-      CHECK gs_control-fieldname+0(6) <> 'AMOUNT'.
-      CHECK gs_control-fieldname+0(5) <> 'MENGE'.
-
-      ASSIGN COMPONENT gs_control-fieldname OF STRUCTURE gs_head TO FIELD-SYMBOL(<fs_value1>).
+      ASSIGN COMPONENT ls_control-fieldname OF STRUCTURE gs_head TO FIELD-SYMBOL(<fs_value_h>).
       CHECK sy-subrc EQ 0.
-      CHECK <fs_value1> IS NOT INITIAL.
+      CHECK <fs_value_h> IS NOT INITIAL.
 
       LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<fs_item>) .
-        ASSIGN COMPONENT gs_control-fieldname OF STRUCTURE <fs_item> TO FIELD-SYMBOL(<fs_value2>).
+        ASSIGN COMPONENT ls_control-fieldname OF STRUCTURE <fs_item> TO FIELD-SYMBOL(<fs_value_i>).
         CHECK sy-subrc EQ 0.
-        IF <fs_value2> IS INITIAL.
-          <fs_value2> = <fs_value1>.
-        ELSEIF gs_control-requi = 'X'.
-          <fs_value2> = <fs_value1>.
+        IF <fs_value_i> IS INITIAL.
+          <fs_value_i> = <fs_value_h>.
+        ELSEIF ls_control-requi = 'X'.
+          <fs_value_i> = <fs_value_h>.
         ENDIF.
       ENDLOOP.
     ENDLOOP.
   ENDMETHOD.
 
 
-  METHOD POST.
+  METHOD post.
+    DATA rv_at TYPE REF TO zat_object.
+    CREATE OBJECT rv_at."初始化对象
 
+    rv_at->g_type = i_type.
+    rv_at->g_budat = i_budat.
+    rv_at->g_atno = i_atno.
 
+    rv_at->get_data( )."读取数据
+    return_error.
 
+    rv_at->get_config( )."读取配置
+    return_error.
 
+    rv_at->lock( )."读取单号
+    return_error.
+
+    CASE rv_at->gs_head-status.
+      WHEN 'S'.
+        rv_at->add_msg( msgty = 'W' msgid = 'ZAT' msgno = '000' msgv1 = '已经过账，不需要处理' ).
+      WHEN 'D' OR 'F'.
+        rv_at->add_msg( msgty = 'E' msgid = 'ZAT' msgno = '000' msgv1 = '已经作废，不能要处理' ).
+      WHEN OTHERS.
+        rv_at->go_step( ).
+    ENDCASE.
+
+    rv_at->unlock( ).
+
+    et_return = rv_at->gt_return.
+    e_status = rv_at->gs_head-status.
 
   ENDMETHOD.
 
 
-  METHOD SAVE_DATA.
+  METHOD save_data.
     gs_head = VALUE #(  BASE gs_head
-    aedat = sy-datum
-    aetim =  sy-uzeit
-    aenam = sy-uname
-    ).
+                                      aedat = sy-datum
+                                      aetim =  sy-uzeit
+                                      aenam = sy-uname
+                                      ).
     MODIFY zatt_head FROM gs_head.
     MODIFY zatt_item FROM TABLE gt_item.
     MODIFY zatt_item_step FROM TABLE gt_item_step.
   ENDMETHOD.
 
 
-  METHOD UPDATE_HEAD_STATUS.
+  METHOD update_head_status.
     gs_head = VALUE #( BASE gs_head
                               status = i_status
                               aedat = sy-datum
                               aetim =  sy-uzeit
                               aenam = sy-uname
                               ).
-
     MODIFY zatt_head FROM @( CORRESPONDING #( gs_head ) ).
   ENDMETHOD.
 
 
-METHOD UPDATE_ITEM_STEP.
+  METHOD update_item_step.
 
-  is_item_step = VALUE #( BASE is_item_step
-  uname = sy-uname
-  aedat = sy-datum
-  aetim = sy-uzeit
-  ).
+    is_item_step = VALUE #( BASE is_item_step
+                                                    uname = sy-uname
+                                                    aedat = sy-datum
+                                                    aetim = sy-uzeit
+                                                    ).
 
-  MODIFY zatt_item_step FROM is_item_step.
+    MODIFY zatt_item_step FROM is_item_step.
 
-  IF is_item_step-status = 'E' OR is_item_step-status = 'F'.
-    UPDATE zatt_head SET status = is_item_step-status
-    WHERE atno = is_item_step-atno.
-ELSEIF is_item_step-status = 'C'.
-    binary_relation( EXPORTING is_item_step = is_item_step ).
-  ENDIF.
+    IF is_item_step-status = 'E' OR is_item_step-status = 'F'.
+      UPDATE zatt_head SET status = is_item_step-status
+                              WHERE atno = is_item_step-atno.
+    ELSEIF is_item_step-status = 'C'.
+      binary_relation( EXPORTING is_item_step = is_item_step ).
+    ENDIF.
 
-  IF gt_message[] IS NOT INITIAL.
-    LOOP AT gt_message ASSIGNING FIELD-SYMBOL(<fs_message>).
-      <fs_message>-LINE = sy-tabix.
+    IF gt_message[] IS NOT INITIAL.
+      LOOP AT gt_message ASSIGNING FIELD-SYMBOL(<fs_message>).
+        <fs_message>-line = sy-tabix.
+      ENDLOOP.
+      MODIFY zatt_message FROM TABLE gt_message[].
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD cancel.
+
+    DATA rv_at TYPE REF TO zat_object.
+    CREATE OBJECT rv_at.
+
+    rv_at->g_type = i_type.
+    rv_at->g_budat = i_budat.
+
+    rv_at->get_data( )."读取数据
+    return_error.
+
+    rv_at->lock( ).
+    return_error.
+
+    CASE rv_at->gs_head-status.
+      WHEN 'A'.
+        rv_at->update_head_status( 'D' ).
+        COMMIT WORK AND WAIT.
+      WHEN 'D'.
+        rv_at->add_msg( msgty = 'W' msgid = 'ZAT' msgno = '000' msgv1 = '已经被作废' ).
+      WHEN 'E' OR 'C' OR 'F'.
+        rv_at->cancel_step( ).
+    ENDCASE.
+
+    rv_at->unlock( ).
+    et_return = rv_at->gt_return.
+
+  ENDMETHOD.
+
+
+  METHOD cancel_single.
+    DATA lt_return TYPE  bapiret2_t.
+    CASE gs_item_step-step_type.
+      WHEN 'PO_CRE'.
+        lt_return = zat_cancel=>po_del( i_ebeln = gs_item_step-docnr ).
+      WHEN 'STO_VL_CRE' OR 'SO_VL_CRE'.
+        lt_return = zat_cancel=>vl_del( i_vbeln_vl = gs_item_step-docnr ).
+      WHEN 'SO_CRE'.
+        lt_return = zat_cancel=>so_del( i_vbeln_va = gs_item_step-docnr ).
+      WHEN 'VL_GI' OR 'MB'.
+        lt_return = zat_cancel=>mb_cancel( EXPORTING
+          i_mblnr = gs_item_step-docnr
+          i_mjahr = gs_item_step-cjahr
+          i_budat = g_budat
+        IMPORTING
+          e_mblnr = gs_item_step-c_docnr
+          e_mjahr = gs_item_step-c_cjahr
+          ).
+      WHEN 'BAPI'.
+        CASE gs_item_step-objtype.
+          WHEN 'BUS2012'.
+            lt_return = zat_cancel=>po_del( i_ebeln = gs_item_step-docnr ).
+          WHEN 'BUS2017'.
+            lt_return = zat_cancel=>mb_cancel( EXPORTING
+              i_mblnr = gs_item_step-docnr
+              i_mjahr = gs_item_step-cjahr
+              i_budat = g_budat
+            IMPORTING
+              e_mblnr = gs_item_step-c_docnr
+              e_mjahr = gs_item_step-c_cjahr
+              ).
+          WHEN 'BUS2105'.
+            lt_return = zat_cancel=>pr_del( i_banfn = gs_item_step-docnr ).
+          WHEN 'VBAK'.
+            lt_return = zat_cancel=>so_del( i_vbeln_va = gs_item_step-docnr ).
+          WHEN 'LIKP'.
+            lt_return = zat_cancel=>vl_del( i_vbeln_vl = gs_item_step-docnr ).
+        ENDCASE.
+    ENDCASE.
+
+    LOOP AT lt_return INTO DATA(ls_return).
+      add_msg( msgty = ls_return-type msgid = ls_return-id msgno = ls_return-number
+                    msgv1 = ls_return-message_v1 msgv2 = ls_return-message_v2 msgv3 = ls_return-message_v3 msgv4 = ls_return-message_v4 ) .
     ENDLOOP.
-    MODIFY zatt_message FROM TABLE gt_message[].
-  ENDIF.
 
-ENDMETHOD.
+    IF g_error = 'X'.
+      ROLLBACK WORK.
+      gs_item_step = VALUE #( status = 'F'
+                                              msgtx = |凭证{ gs_item_step-docnr }冲销失败.| ).
+      add_msg( msgty = 'E' msgid = 'ZAT' msgno = '000' msgv1 = |{ gs_item_step-msgtx }|  ).
+      update_item_step( CHANGING is_item_step = gs_item_step ).
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT' EXPORTING wait = 'X'.
+    ELSE.
+      gs_item_step-c_docnr = COND docnr( WHEN gs_item_step-c_docnr IS INITIAL THEN gs_item_step-docnr ).
+      gs_item_step = VALUE #( status = 'D'
+                                              msgtx = |凭证{ gs_item_step-docnr }冲销成功.| ).
+      add_msg( msgty = 'S' msgid = 'ZAT' msgno = '000' msgv1 = |{ gs_item_step-msgtx }|  ).
+      update_item_step( CHANGING is_item_step = gs_item_step ).
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT' EXPORTING wait = 'X'.
+    ENDIF.
+    MODIFY gt_item_step FROM gs_item_step.
+    IF g_error = 'X'.
+      RETURN.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD cancel_step.
+    DATA:lt_return TYPE bapiret2_t.
+    CLEAR g_times.
+
+    SORT gt_item_step BY step DESCENDING.
+
+    SELECT SINGLE MAX( times ) FROM zatt_message
+    WHERE atno = @gs_head-atno
+    GROUP BY atno
+    INTO @g_times.
+
+    ADD 1 TO g_times.
+
+    add_msg( EXPORTING msgty = 'S' msgid = 'ZAT' msgno = '000' msgv1 = |--自动交易{ gs_head-atno }正在冲销--| ).
+
+    LOOP AT gt_item_step INTO gs_item_step.
+      CASE gs_item_step-status.
+        WHEN 'A' OR 'E'.        "初始/错误
+          gs_item_step-status = 'D'.
+          gs_item_step-msgtx = '未执行，取消成功'..
+          update_item_step( CHANGING is_item_step = gs_item_step ) .
+          CONTINUE.
+        WHEN 'D' OR 'F'.        "已经完成
+          CONTINUE.
+        WHEN 'C'.        "继续执行冲销逻辑
+      ENDCASE.
+      cancel_single( ).
+      IF g_error = 'X'.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+
+    IF g_error = ''.
+      update_head_status( 'D' ).
+      COMMIT WORK AND WAIT.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD get_data.
+    SELECT SINGLE * FROM zatt_head
+    WHERE atno = @g_atno
+    AND type = @g_type
+    INTO  @gs_head.
+
+    SELECT * FROM zatt_item
+    WHERE atno = @g_atno
+    INTO TABLE @gt_item.
+
+    SELECT * FROM zatt_item_step
+    WHERE atno = @g_atno
+    INTO TABLE @gt_item_step.
+
+    IF gs_head IS INITIAL
+    OR gt_item IS INITIAL
+    OR gt_item_step IS INITIAL.
+      add_msg( msgty = 'E' msgid = 'ZAT' msgno = '000' msgv1 = '获取数据失败' ).
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD lock.
+    CHECK gs_head-atno IS NOT INITIAL.
+    CALL FUNCTION 'ENQUEUE_EZATT_HEAD'
+      EXPORTING
+        mode_zatt_head = 'E'
+        mandt          = sy-mandt
+        atno           = gs_head-atno
+      EXCEPTIONS
+        foreign_lock   = 1
+        system_failure = 2
+        OTHERS         = 3.
+    IF sy-subrc <> 0.
+      add_msg( msgty = sy-msgty
+                          msgid = sy-msgid
+                          msgno = sy-msgno
+                          msgv1 = sy-msgv1
+                          msgv2 = sy-msgv2
+                          msgv3 = sy-msgv3
+                          msgv4 = sy-msgv4
+                          ).
+
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD progressbar_show.
+    DATA: lv_msg TYPE string.
+    IF i_msg IS INITIAL.
+      lv_msg = |{ TEXT-t01 }........ { i_current }/{ i_total }|.
+    ELSE.
+      lv_msg = |{ i_msg }........ { i_current }/{ i_total }|..
+    ENDIF.
+    cl_progress_indicator=>progress_indicate(
+    EXPORTING
+      i_text               = lv_msg
+      i_processed          = i_current
+      i_total              = i_total
+      i_output_immediately = abap_true ).
+
+  ENDMETHOD.
+
+
+  METHOD unlock.
+    CHECK gs_head-atno IS NOT INITIAL.
+    CALL FUNCTION 'DEQUEUE_EZATT_HEAD'
+      EXPORTING
+        mode_zatt_head = 'E'
+        mandt          = sy-mandt
+        atno           = gs_head-atno.
+  ENDMETHOD.
+
+
+  METHOD clear_buffer.
+    CALL FUNCTION 'MARD_CLEAR_UPDATE_BUFFER' EXPORTING iv_clear_all_flag = 'X'.
+  ENDMETHOD.
 ENDCLASS.

@@ -15,13 +15,13 @@ FUNCTION zat_post.
 
   g_type = iv_type.
   g_budat = iv_budat.
-  gs_head-budat = g_budat.
 
   SELECT SINGLE * FROM zatt_head
                                 WHERE atno = @iv_atno
                                 AND type = @iv_type
                                 INTO  @gs_head.
 
+  gs_head-budat = iv_budat.
   SELECT * FROM zatt_item
                   WHERE atno = @iv_atno
                   INTO TABLE @gt_item.

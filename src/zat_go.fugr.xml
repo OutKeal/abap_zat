@@ -18,7 +18,13 @@
      <SHORT_TEXT>冲销记录</SHORT_TEXT>
      <IMPORT>
       <RSIMP>
+       <PARAMETER>IV_EXORD</PARAMETER>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>ZATD_EXORD</TYP>
+      </RSIMP>
+      <RSIMP>
        <PARAMETER>IV_ATNO</PARAMETER>
+       <OPTIONAL>X</OPTIONAL>
        <TYP>ZATD_ATNO</TYP>
       </RSIMP>
       <RSIMP>
@@ -38,6 +44,11 @@
       </RSTBL>
      </TABLES>
      <DOCUMENTATION>
+      <RSFDO>
+       <PARAMETER>IV_EXORD</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>外部单号</STEXT>
+      </RSFDO>
       <RSFDO>
        <PARAMETER>IV_ATNO</PARAMETER>
        <KIND>P</KIND>

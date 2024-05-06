@@ -40,8 +40,8 @@ FORM frm_get_config .
             WHERE type = @g_type
             INTO TABLE @gt_step_rule.
   IF sy-subrc NE 0.
-    PERFORM frm_add_msg USING 'E' 'ZAT' '001' '' '' '' ''."配置获取失败，请检查交易类型配置
-    RETURN.
+*    PERFORM frm_add_msg USING 'E' 'ZAT' '001' '' '' '' ''."配置获取失败，请检查交易类型配置
+*    RETURN.
   ENDIF.
 
 ENDFORM.
@@ -607,22 +607,46 @@ ENDFORM.
 *&      --> GS_HEAD
 *&---------------------------------------------------------------------*
 FORM frm_exord_check  .
-
   CHECK gs_head-exord IS NOT INITIAL.
 
-  SELECT SINGLE atno FROM zatt_head
+  SELECT SINGLE * FROM zatt_head
               WHERE exord = @gs_head-exord
                   AND type = @g_type
                   AND status <> 'D'
-                  INTO @DATA(l_atno).
+                  INTO @DATA(l_head).
 
   IF sy-subrc EQ 0.
-    PERFORM frm_add_msg
-                    USING 'E'
-                          'ZAT'
-                          '000'
-                          '外部单号' gs_head-exord '已重复，请检查输入。单号为'
-                          l_atno .
+
+    IF l_head-status = 'A' OR l_head-status = 'E'.
+      DATA lt_return TYPE bapiret2_tab.
+      CALL FUNCTION 'ZAT_POST'
+        EXPORTING
+          iv_type   = l_head-type
+          iv_atno   = l_head-atno
+          iv_budat  = g_budat
+        TABLES
+          et_return = lt_return.
+      LOOP AT lt_return INTO DATA(ls_return).
+        PERFORM frm_add_msg
+        USING ls_return-type
+             ls_return-id
+             ls_return-number
+             ls_return-message_v1
+             ls_return-message_v2
+             ls_return-message_v3
+             ls_return-message_v4.
+      ENDLOOP.
+      g_error = 'X'.
+    ELSE.
+      PERFORM frm_add_msg
+      USING 'E'
+            'ZAT'
+            '000'
+            '外部单号' gs_head-exord '已重复，请检查输入。单号为'
+            l_head-atno .
+    ENDIF.
+
+
   ENDIF.
 ENDFORM.
 *&---------------------------------------------------------------------*

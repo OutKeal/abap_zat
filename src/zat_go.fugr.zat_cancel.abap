@@ -2,7 +2,8 @@ FUNCTION zat_cancel.
 *"----------------------------------------------------------------------
 *"*"本地接口：
 *"  IMPORTING
-*"     VALUE(IV_ATNO) TYPE  ZATD_ATNO
+*"     VALUE(IV_EXORD) TYPE  ZATD_EXORD OPTIONAL
+*"     VALUE(IV_ATNO) TYPE  ZATD_ATNO OPTIONAL
 *"     VALUE(IV_TYPE) TYPE  ZATD_TYPE
 *"     VALUE(IV_BUDAT) TYPE  BUDAT
 *"  TABLES
@@ -13,9 +14,13 @@ FUNCTION zat_cancel.
   g_budat = iv_budat.
 
   SELECT SINGLE * FROM zatt_head
-  WHERE atno = @iv_atno
+  WHERE ( atno = @iv_atno OR exord = @iv_exord )
   AND type = @iv_type
   INTO  @gs_head.
+  IF sy-subrc EQ 0.
+    iv_atno = gs_head-atno.
+    iv_exord = gs_head-exord.
+  ENDIF.
 
   SELECT * FROM zatt_item
   WHERE atno = @iv_atno

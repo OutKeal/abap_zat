@@ -35,9 +35,9 @@ FORM frm_step_cancel .
 *        PERFORM frm_add_msg USING 'S' 'ZAT' '000' gs_item_step-msgtx '' '' ''.
         PERFORM frm_update_item_step USING gs_item_step .
         CONTINUE.
-      WHEN 'D' OR 'F'.        "已经完成
+      WHEN 'D' .        "已经完成
         CONTINUE.
-      WHEN 'C'.        "继续执行冲销逻辑
+      WHEN 'C' OR 'F'.        "继续执行冲销逻辑
     ENDCASE.
 
     CASE gs_item_step-step_type.
@@ -53,6 +53,8 @@ FORM frm_step_cancel .
         PERFORM frm_vl_del.
       WHEN 'MB'.
         PERFORM frm_mb_cancel.
+      WHEN 'BAPI'.
+        PERFORM frm_bapi_cancel.
     ENDCASE.
 
     MODIFY gt_item_step FROM gs_item_step.
@@ -371,5 +373,29 @@ FORM frm_vl_gi_re .
     PERFORM frm_update_item_step USING gs_item_step .
     CALL FUNCTION 'BAPI_TRANSACTION_COMMIT' EXPORTING wait = 'X'.
   ENDIF.
+
+ENDFORM.
+
+FORM frm_bapi_cancel.
+  CASE gs_item_step-objtype.
+    WHEN 'BUS2017'.
+      SELECT SINGLE blart
+        FROM mkpf
+        WHERE mblnr = @gs_item_step-docnr
+        AND mjahr = @gs_item_step-cjahr
+        INTO @DATA(blart).
+      IF blart = 'WL'.
+        PERFORM frm_vl_gi_re.
+      ELSE.
+        PERFORM frm_mb_cancel.
+      ENDIF.
+    WHEN 'BUS2012'.
+      PERFORM frm_po_del.
+    WHEN 'LIKP'.
+      PERFORM frm_vl_del.
+    WHEN 'VBAK'.
+      PERFORM frm_so_del.
+  ENDCASE.
+
 
 ENDFORM.
